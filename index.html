@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#d9dda7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Disc Tower">
+<title>Disc Tower Puzzle</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #d9dda7;
+    color: #171717;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 18px;
+  }
+  .game {
+    width: min(900px, 100%);
+    background: rgba(255,255,255,.20);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 14px 45px rgba(0,0,0,.12);
+  }
+  h1 {
+    text-align: center;
+    margin: 0 0 7px;
+    font-size: clamp(25px, 5vw, 43px);
+    letter-spacing: -.8px;
+  }
+  .subtitle {
+    text-align: center;
+    margin: 0 0 20px;
+    font-size: clamp(14px, 2.5vw, 19px);
+  }
+  .hud {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+  }
+  .pill {
+    background: rgba(255,255,255,.58);
+    padding: 9px 15px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    min-height: 430px;
+    align-items: end;
+  }
+  .tower {
+    position: relative;
+    height: 390px;
+    border: 3px solid rgba(55,48,25,.18);
+    border-radius: 18px;
+    background: rgba(255,255,255,.20);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-direction: column;
+    padding-bottom: 16px;
+    cursor: pointer;
+    transition: .15s ease;
+    user-select: none;
+  }
+  .tower:hover { background: rgba(255,255,255,.29); }
+  .tower.selected {
+    outline: 4px solid rgba(80,92,210,.45);
+    transform: translateY(-2px);
+  }
+  .pole {
+    position: absolute;
+    bottom: 15px;
+    width: 10px;
+    height: 330px;
+    background: #756d52;
+    border-radius: 8px 8px 3px 3px;
+    z-index: 0;
+  }
+  .base {
+    position: absolute;
+    bottom: 8px;
+    width: 88%;
+    height: 18px;
+    border-radius: 12px;
+    background: #756d52;
+    z-index: 0;
+  }
+  .discs {
+    position: absolute;
+    left: 50%;
+    bottom: 33px;
+    transform: translateX(-50%);
+    width: 94%;
+    height: 220px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: flex-start;
+    align-items: center;
+  }
+  .disc {
+    display: block;
+    flex: 0 0 47px;
+    height: 47px;
+    margin: 1px 0;
+    border-radius: 18px;
+    border: 2px solid rgba(0,0,0,.25);
+    box-shadow: inset 0 5px 8px rgba(255,255,255,.28), 0 3px 4px rgba(0,0,0,.16);
+    transition: transform .18s ease;
+  }
+  .disc.top {
+    cursor: grab;
+  }
+  .disc.top:hover { transform: translateY(-4px); }
+  .d1 { width: 42%; background:#8d6bb3; }
+  .d2 { width: 54%; background:#eee6dd; }
+  .d3 { width: 66%; background:#e2c8aa; }
+  .d4 { width: 78%; background:#e98738; }
+  .d5 { width: 90%; background:#a56c3d; }
+  .labels {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    margin-top:10px;
+    text-align:center;
+    font-weight:800;
+    font-size:18px;
+  }
+  .controls {
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin-top:18px;
+    flex-wrap:wrap;
+  }
+  button {
+    border:0;
+    border-radius:14px;
+    padding:12px 18px;
+    font-size:16px;
+    font-weight:800;
+    cursor:pointer;
+    min-height:46px;
+    touch-action:manipulation;
+    -webkit-user-select:none;
+    user-select:none;
+    background:#242424;
+    color:white;
+  }
+  button:hover { transform: translateY(-1px); }
+  .message {
+    text-align:center;
+    min-height:27px;
+    margin-top:15px;
+    font-weight:800;
+    font-size:18px;
+  }
+  .win {
+    color:#236b2e;
+    animation: winPulse .7s ease-in-out infinite alternate;
+  }
+  @keyframes winPulse {
+    from { transform:scale(1); }
+    to { transform:scale(1.035); }
+  }
+  .instructions {
+    text-align:center;
+    margin: 12px auto 0;
+    max-width:650px;
+    line-height:1.4;
+    opacity:.85;
+  }
+  @media (max-width:600px) {
+    body { padding: 8px; }
+    .game { padding: 14px 9px 18px; border-radius:18px; }
+    .board { min-height: 330px; gap: 6px; }
+    .tower { height: 300px; }
+    .pole { height: 245px; }
+    .disc { flex-basis:35px; height:35px; margin:1px 0; border-radius:14px; }
+    .discs { bottom: 25px; height: 165px; }
+    .labels { gap:6px; font-size:15px; }
+    .base { height:14px; }
+  }
+</style>
+</head>
+<body>
+<div class="game">
+  <div style="text-align:center;font-weight:900;letter-spacing:2px;font-size:12px;opacity:.55;margin-bottom:7px;">DISC TOWER</div>
+  <h1>Move All Discs to Tower 3</h1>
+  <p class="subtitle">A larger disc can never be placed on a smaller disc.</p>
+
+  <div class="hud">
+    <div class="pill">Moves: <span id="moves">0</span></div>
+    <div class="pill">Best: <span id="best">—</span></div>
+  </div>
+
+  <div class="board" id="board">
+    <div class="tower" data-tower="0">
+      <div class="pole"></div><div class="base"></div>
+      <div class="discs">
+        <div class="disc d4"></div>
+        <div class="disc d3"></div>
+        <div class="disc d2"></div>
+        <div class="disc d1 top"></div>
+      </div>
+    </div>
+    <div class="tower" data-tower="1"><div class="pole"></div><div class="base"></div><div class="discs"></div></div>
+    <div class="tower" data-tower="2"><div class="pole"></div><div class="base"></div><div class="discs"></div></div>
+  </div>
+
+  <div class="labels"><div>TOWER 1</div><div>TOWER 2</div><div>TOWER 3</div></div>
+
+  <div class="message" id="message">Drag the top disc to another tower, or tap towers to move discs.</div>
+
+  <div class="controls">
+    <button id="reset">Reset</button>
+    <button id="hint">Hint</button>
+  </div>
+
+  <p class="instructions">
+    Minimum for 4 discs: <strong>15 moves</strong>. Drag the top disc on iPhone, or tap towers.
+  </p>
+</div>
+
+<script>
+const towers = [ [4,3,2,1], [], [] ];
+let selected = null;
+let moves = 0;
+let busy = false;
+let suppressNextClick = false;
+
+const towerEls = [...document.querySelectorAll('.tower')];
+const movesEl = document.getElementById('moves');
+const bestEl = document.getElementById('best');
+const messageEl = document.getElementById('message');
+
+const savedBest = localStorage.getItem('discTowerBest');
+if (savedBest) bestEl.textContent = savedBest;
+
+function render() {
+  towerEls.forEach((towerEl, i) => {
+    const box = towerEl.querySelector('.discs');
+    box.innerHTML = '';
+    towers[i].forEach((size, idx) => {
+      const d = document.createElement('div');
+      d.className = `disc d${size}`;
+      if (idx === towers[i].length - 1) {
+        d.classList.add('top');
+        d.draggable = true;
+        d.setAttribute('aria-label', `Drag disc ${size}`);
+        d.addEventListener('dragstart', (event) => {
+          if (busy) { event.preventDefault(); return; }
+          selected = i;
+          event.dataTransfer.setData('text/plain', String(i));
+          event.dataTransfer.effectAllowed = 'move';
+          towerEls.forEach((towerEl, towerIndex) => {
+            towerEl.classList.toggle('selected', towerIndex === selected);
+          });
+        });
+
+        // Pointer dragging also works on touchscreens where HTML drag/drop
+        // is not consistently supported (including iPhone browsers).
+        d.addEventListener('pointerdown', (event) => {
+          if (busy || event.pointerType === 'mouse') return;
+          event.preventDefault();
+          selected = i;
+          towerEls.forEach((towerEl, towerIndex) => {
+            towerEl.classList.toggle('selected', towerIndex === selected);
+          });
+        });
+        d.addEventListener('dragend', () => {
+          selected = null;
+          render();
+        });
+      }
+      box.appendChild(d);
+    });
+    towerEl.classList.toggle('selected', selected === i);
+  });
+  movesEl.textContent = moves;
+}
+
+function legalMove(from, to) {
+  if (!towers[from].length) return false;
+  if (!towers[to].length) return true;
+  return towers[from][towers[from].length-1] < towers[to][towers[to].length-1];
+}
+
+function chooseTower(i) {
+  if (busy) return;
+
+  if (selected === null) {
+    if (!towers[i].length) {
+      messageEl.textContent = 'That tower is empty.';
+      return;
+    }
+    selected = i;
+    messageEl.textContent = 'Now choose a tower to place the disc.';
+    render();
+    return;
+  }
+
+  if (i === selected) {
+    selected = null;
+    messageEl.textContent = 'Selection cancelled.';
+    render();
+    return;
+  }
+
+  if (!legalMove(selected, i)) {
+    messageEl.textContent = 'You cannot place a larger disc on a smaller one.';
+    towerEls[i].animate(
+      [{transform:'translateX(0)'},{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'translateX(0)'}],
+      {duration:180}
+    );
+    return;
+  }
+
+  const disc = towers[selected].pop();
+  towers[i].push(disc);
+  moves++;
+  selected = null;
+  messageEl.textContent = 'Good move!';
+  render();
+
+  if (towers[2].length === 4) {
+    const oldBest = Number(localStorage.getItem('discTowerBest') || Infinity);
+    if (moves < oldBest) {
+      localStorage.setItem('discTowerBest', moves);
+      bestEl.textContent = moves;
+    }
+    messageEl.textContent = `🎉 Solved in ${moves} moves!`;
+    messageEl.classList.add('win');
+    busy = true;
+    towerEls[2].animate(
+      [{transform:'scale(1)'},{transform:'scale(1.035)'},{transform:'scale(1)'}],
+      {duration:500, iterations:2}
+    );
+  }
+}
+
+document.addEventListener('pointerup', (event) => {
+  if (selected === null || busy || event.pointerType === 'mouse') return;
+  const target = document.elementFromPoint(event.clientX, event.clientY);
+  const towerEl = target && target.closest('.tower');
+  if (!towerEl) return;
+  suppressNextClick = true;
+  const destination = Number(towerEl.dataset.tower);
+  if (destination === selected) {
+    selected = null;
+    render();
+    return;
+  }
+  if (!legalMove(selected, destination)) {
+    messageEl.textContent = 'You cannot place a larger disc on a smaller one.';
+    selected = null;
+    render();
+    return;
+  }
+  towers[destination].push(towers[selected].pop());
+  moves++;
+  selected = null;
+  messageEl.classList.remove('win');
+  messageEl.textContent = 'Good move!';
+  render();
+  if (towers[2].length === 4) {
+    const oldBest = Number(localStorage.getItem('discTowerBest') || Infinity);
+    if (moves < oldBest) {
+      localStorage.setItem('discTowerBest', moves);
+      bestEl.textContent = moves;
+    }
+    messageEl.textContent = `🎉 Solved in ${moves} moves!`;
+    messageEl.classList.add('win');
+    busy = true;
+  }
+});
+
+towerEls.forEach((el, i) => {
+  el.addEventListener('click', () => {
+    if (suppressNextClick) { suppressNextClick = false; return; }
+    chooseTower(i);
+  });
+  el.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    if (selected !== null && selected !== i && legalMove(selected, i)) {
+      event.dataTransfer.dropEffect = 'move';
+    } else {
+      event.dataTransfer.dropEffect = 'none';
+    }
+  });
+  el.addEventListener('drop', (event) => {
+    event.preventDefault();
+    if (busy || selected === null || selected === i) return;
+    if (!legalMove(selected, i)) {
+      messageEl.textContent = 'You cannot place a larger disc on a smaller one.';
+      selected = null;
+      render();
+      return;
+    }
+    const disc = towers[selected].pop();
+    towers[i].push(disc);
+    moves++;
+    selected = null;
+    messageEl.classList.remove('win');
+    messageEl.textContent = 'Good move!';
+    render();
+    if (towers[2].length === 4) {
+      const oldBest = Number(localStorage.getItem('discTowerBest') || Infinity);
+      if (moves < oldBest) {
+        localStorage.setItem('discTowerBest', moves);
+        bestEl.textContent = moves;
+      }
+      messageEl.textContent = `🎉 Solved in ${moves} moves!`;
+      messageEl.classList.add('win');
+      busy = true;
+    }
+  });
+});
+
+document.getElementById('reset').addEventListener('click', () => {
+  towers[0] = [4,3,2,1];
+  towers[1] = [];
+  towers[2] = [];
+  selected = null;
+  moves = 0;
+  busy = false;
+  messageEl.classList.remove('win');
+  messageEl.textContent = 'Drag the top disc to another tower, or tap towers to move discs.';
+  render();
+});
+
+document.getElementById('hint').addEventListener('click', () => {
+  if (busy) return;
+  const n = towers.length;
+  let suggestion = null;
+
+  // Find the first legal move, preferring a move that is part of a
+  // shortest-path solution for the current 4-disc starting puzzle.
+  for (let from=0; from<n && !suggestion; from++) {
+    for (let to=0; to<n; to++) {
+      if (from !== to && legalMove(from,to)) {
+        suggestion = [from,to];
+        break;
+      }
+    }
+  }
+
+  if (suggestion) {
+    messageEl.textContent =
+      `Hint: move the top disc from Tower ${suggestion[0]+1} to Tower ${suggestion[1]+1}.`;
+    towerEls[suggestion[0]].animate(
+      [{boxShadow:'0 0 0 rgba(0,0,0,0)'},{boxShadow:'0 0 0 8px rgba(80,92,210,.28)'},{boxShadow:'0 0 0 rgba(0,0,0,0)'}],
+      {duration:700}
+    );
+  }
+});
+
+render();
+</script>
+</body>
+</html>
